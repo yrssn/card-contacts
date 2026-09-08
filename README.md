@@ -124,7 +124,7 @@ kdocs/kdocs-airscript.js 粘贴到金山文档脚本编辑器
 
 ## 线上部署（Docker + 已有 nginx 反代）
 
-以 `cards.moneymoon.jp` 为例，服务器上：
+以 `inventoryui.moneymoon.jp` 为例，服务器上：
 
 ```bash
 cd /opt && git clone https://github.com/yrssn/card-contacts.git && cd card-contacts
