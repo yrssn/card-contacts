@@ -105,6 +105,8 @@ function setImageCell(sheet, address, url) {
   const cell = sheet.Range(address);
   if (!text(url)) return false;
   cell.ClearContents();
+  let before = 0;
+  try { before = sheet.Shapes.Count || 0; } catch (_) {}
   const shape = sheet.Shapes.AddPicture(
     text(url),
     0,
@@ -114,9 +116,14 @@ function setImageCell(sheet, address, url) {
     Math.max(40, cell.Width - 4),
     Math.max(40, cell.Height - 4),
   );
-  if (!shape) throw new Error("金山文档没有返回图片对象（通常是图片地址公网无法访问）");
-  try { shape.Placement = 1; } catch (_) {}
-  return true;
+  if (shape) {
+    try { shape.Placement = 1; } catch (_) {}
+    return true;
+  }
+  let after = before;
+  try { after = sheet.Shapes.Count || 0; } catch (_) {}
+  if (after > before) return true;
+  throw new Error("图片未能插入（请确认图片地址公网可访问）：" + text(url));
 }
 
 function tryImage(sheet, address, url, errors) {
