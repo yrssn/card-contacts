@@ -120,9 +120,29 @@ def _extract_json(text: str) -> dict[str, Any]:
             text = text[start : end + 1]
     try:
         data = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise VisionError(f"模型输出不是合法 JSON：{text[:200]}") from exc
+    except json.JSONDecodeError:
+        data = _repair_truncated_json(text)
+        if data is None:
+            raise VisionError(f"模型输出不是合法 JSON（可能被截断，试试调大 max_tokens）：{text[:200]}")
     return data if isinstance(data, dict) else {}
+
+
+def _repair_truncated_json(text: str) -> dict[str, Any] | None:
+    """模型输出中途被截断时，从最后一个完整的键值对处收尾，保住已识别的字段。"""
+    start = text.find("{")
+    if start < 0:
+        return None
+    body = text[start:]
+    for cut in (len(body), *[m.start() for m in reversed(list(re.finditer(r",", body)))]):
+        candidate = body[:cut].rstrip()
+        for tail in ("}", '"}', '":""}'):
+            try:
+                data = json.loads(candidate + tail)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(data, dict) and data:
+                return data
+    return None
 
 
 async def recognize_card(model: VisionModel, images: list[bytes]) -> dict[str, str]:
@@ -133,8 +153,7 @@ async def recognize_card(model: VisionModel, images: list[bytes]) -> dict[str, s
         raw = await chat_with_images(model, CARD_PROMPT, urls)
         data = _extract_json(raw)
     except VisionError:
-        if len(urls) < 2:
-            raise
+        # 双面失败退回只识别正面；单面失败则重试一次（模型输出不稳定）
         raw = await chat_with_images(model, CARD_PROMPT, urls[:1])
         data = _extract_json(raw)
     keys = [
