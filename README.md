@@ -29,9 +29,8 @@
 conda env create -f environment.yml        # 创建环境 card-contacts（Python 3.11 + requirements）
 conda activate card-contacts
 
-cd backend
-copy .env.example .env                     # Mac/Linux: cp .env.example .env，按需修改
-python run.py                              # http://localhost:8000  接口文档 /docs
+copy backend\.env.example backend\.env    # Mac/Linux: cp backend/.env.example backend/.env，按需修改
+python run.py                              # 在仓库根目录运行；http://localhost:8000  接口文档 /docs
 ```
 
 以后更新依赖：`conda activate card-contacts && pip install -r backend/requirements.txt`。
