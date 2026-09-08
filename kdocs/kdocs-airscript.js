@@ -101,32 +101,73 @@ function findDuplicate(sheet, card) {
   return 0;
 }
 
-// AddPicture 的 FileName 只接受 Base64（data:image/...）或 kdocs 同域 URL，
-// 因此后端会把压缩后的图片以 Base64 随请求传来（frontImageData / backImageData），URL 仅作兜底。
+function errText(error) {
+  return String(error && error.message ? error.message : error);
+}
+
+function shapesCount(sheet) {
+  try { return sheet.Shapes.Count || 0; } catch (_) { return 0; }
+}
+
+// 图片来源：后端随请求传来的 Base64（frontImageData / backImageData），URL 仅作兜底。
+// 依次尝试：Range.InsertImage（AirScript 1.0 单元格图片，只接受 Base64）
+//        → Shapes.AddPicture 对象参数 → Shapes.AddPicture 位置参数。
 function setImageCell(sheet, address, source, fallbackUrl) {
   const cell = sheet.Range(address);
-  const url = text(source) || text(fallbackUrl);
-  if (!url) return false;
+  const data = text(source);
+  const url = text(fallbackUrl);
+  if (!data && !url) return false;
   cell.ClearContents();
-  let before = 0;
-  try { before = sheet.Shapes.Count || 0; } catch (_) {}
-  const shape = sheet.Shapes.AddPicture(
-    text(url),
-    0,
-    0,
-    cell.Left + 2,
-    cell.Top + 2,
-    Math.max(40, cell.Width - 4),
-    Math.max(40, cell.Height - 4),
-  );
-  if (shape) {
-    try { shape.Placement = 1; } catch (_) {}
-    return true;
+  const reasons = [];
+
+  if (data) {
+    try {
+      if (typeof cell.InsertImage !== "function") throw new Error("InsertImage 不可用");
+      cell.InsertImage(data);
+      return true;
+    } catch (error) {
+      reasons.push("InsertImage: " + errText(error));
+    }
   }
-  let after = before;
-  try { after = sheet.Shapes.Count || 0; } catch (_) {}
-  if (after > before) return true;
-  throw new Error("图片未能插入：" + (url.indexOf("data:") === 0 ? "Base64 图片被拒绝" : url));
+
+  const candidates = data ? [data, url] : [url];
+  const opts = {
+    LinkToFile: 0,
+    SaveWithDocument: 0,
+    Left: cell.Left + 2,
+    Top: cell.Top + 2,
+    Width: Math.max(40, cell.Width - 4),
+    Height: Math.max(40, cell.Height - 4),
+  };
+  for (let i = 0; i < candidates.length; i += 1) {
+    const fileName = candidates[i];
+    if (!fileName) continue;
+    const label = fileName.indexOf("data:") === 0 ? "Base64" : fileName;
+    const before = shapesCount(sheet);
+    try {
+      const shape = sheet.Shapes.AddPicture(Object.assign({ FileName: fileName }, opts));
+      if (shape || shapesCount(sheet) > before) {
+        try { if (shape) shape.Placement = 1; } catch (_) {}
+        return true;
+      }
+      reasons.push("AddPicture{" + label + "}: 无返回");
+    } catch (error) {
+      reasons.push("AddPicture{" + label + "}: " + errText(error));
+    }
+    try {
+      const shape = sheet.Shapes.AddPicture(
+        fileName, 0, 0, opts.Left, opts.Top, opts.Width, opts.Height,
+      );
+      if (shape || shapesCount(sheet) > before) {
+        try { if (shape) shape.Placement = 1; } catch (_) {}
+        return true;
+      }
+      reasons.push("AddPicture(" + label + "): 无返回");
+    } catch (error) {
+      reasons.push("AddPicture(" + label + "): " + errText(error));
+    }
+  }
+  throw new Error("图片未能插入 [" + reasons.join("; ") + "]");
 }
 
 function tryImage(sheet, address, source, fallbackUrl, errors) {
@@ -198,7 +239,7 @@ function main() {
     if (payload.action === "add") return addContact(payload);
     if (payload.action === "ensure_sheet") return ensureSheet(payload.sheetName);
     if (payload.action === "list_sheets") return { ok: true, sheets: listSheets() };
-    if (payload.action === "health") return { ok: true, version: "card-contacts-v2", sheets: listSheets() };
+    if (payload.action === "health") return { ok: true, version: "card-contacts-v3", sheets: listSheets() };
     return { ok: false, error: "不支持的操作" };
   } catch (error) {
     return { ok: false, error: String(error && error.message ? error.message : error) };
