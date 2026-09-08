@@ -10,12 +10,3 @@ services:
     volumes:
       - ./backend/data:/app/data
     restart: unless-stopped
-    networks:
-      - default
-      - proxy
-
-# shared-proxy 所在的 docker 网络名，按实际修改（docker network ls 查看）
-networks:
-  proxy:
-    external: true
-    name: bridge
