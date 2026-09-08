@@ -1,0 +1,125 @@
+"""多模态视觉模型调用（OpenAI 兼容 /chat/completions，支持 OpenAI / 通义千问 / 智谱 / 豆包 / DeepSeek-VL 等）。"""
+import base64
+import io
+import json
+import re
+from typing import Any
+
+import httpx
+from PIL import Image
+
+from ..models import VisionModel
+
+CARD_PROMPT = """你是名片信息提取助手。请仔细阅读名片图片（可能有正反两面，可能是中文、日文或英文），提取信息并只输出一个 JSON 对象，不要任何解释，字段如下：
+{
+  "language": "名片主要语种，只能是 JP / CN / EN 之一",
+  "name": "姓名（保留原文，日文名保留汉字）",
+  "sex": "性别，能判断则填 男/女，否则留空",
+  "note": "备注，如年龄段、语言能力等，没有留空",
+  "department": "部门+职位，例如 営業本部 主任 / 代表取締役",
+  "businessKeywords": "主营业务关键词，10字以内",
+  "productServiceType": "主营产品/服务类型，10字以内",
+  "company": "公司名全称",
+  "website": "官网网址",
+  "email": "邮箱，多个用 / 分隔",
+  "phone": "电话，多个用 / 分隔，保留原格式"
+}
+找不到的字段填空字符串。"""
+
+
+class VisionError(Exception):
+    pass
+
+
+def _image_to_data_url(data: bytes, max_side: int = 1600) -> str:
+    img = Image.open(io.BytesIO(data))
+    img = img.convert("RGB")
+    if max(img.size) > max_side:
+        img.thumbnail((max_side, max_side))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=88)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def _test_image_data_url() -> str:
+    """生成一张纯红色小图用于验证模型是否支持图片输入。"""
+    img = Image.new("RGB", (64, 64), (220, 30, 30))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+async def chat_with_images(model: VisionModel, prompt: str, image_data_urls: list[str], timeout: float = 120) -> str:
+    content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
+    for url in image_data_urls:
+        content.append({"type": "image_url", "image_url": {"url": url}})
+    body: dict[str, Any] = {
+        "model": model.model,
+        "messages": [{"role": "user", "content": content}],
+        "max_tokens": model.max_tokens,
+        "temperature": model.temperature_x100 / 100,
+    }
+    url = model.base_url.rstrip("/") + "/chat/completions"
+    headers = {"Authorization": f"Bearer {model.api_key}", "Content-Type": "application/json"}
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        try:
+            resp = await client.post(url, headers=headers, json=body)
+        except httpx.HTTPError as exc:
+            raise VisionError(f"请求模型失败：{exc}") from exc
+    if resp.status_code != 200:
+        raise VisionError(f"模型返回 HTTP {resp.status_code}：{resp.text[:400]}")
+    try:
+        return resp.json()["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, ValueError, TypeError) as exc:
+        raise VisionError(f"无法解析模型返回：{resp.text[:400]}") from exc
+
+
+async def verify_vision(model: VisionModel) -> tuple[bool, str]:
+    """必须是视觉模型：发一张红色图片，要求回答颜色。"""
+    try:
+        answer = await chat_with_images(
+            model,
+            "这张图片主要是什么颜色？只回答一个颜色词。",
+            [_test_image_data_url()],
+            timeout=60,
+        )
+    except VisionError as exc:
+        msg = str(exc)
+        if re.search(r"image|vision|multimodal|不支持|content type", msg, re.I):
+            return False, f"该模型不支持图片输入，请选择视觉模型：{msg}"
+        return False, msg
+    if re.search(r"红|red|赤", answer, re.I):
+        return True, f"验证通过，模型回答：{answer.strip()[:50]}"
+    return False, f"模型未能正确识别图片内容（回答：{answer.strip()[:80]}），请确认是视觉模型"
+
+
+def _extract_json(text: str) -> dict[str, Any]:
+    text = text.strip()
+    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.S)
+    if fenced:
+        text = fenced.group(1)
+    else:
+        start, end = text.find("{"), text.rfind("}")
+        if start >= 0 and end > start:
+            text = text[start : end + 1]
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise VisionError(f"模型输出不是合法 JSON：{text[:200]}") from exc
+    return data if isinstance(data, dict) else {}
+
+
+async def recognize_card(model: VisionModel, images: list[bytes]) -> dict[str, str]:
+    urls = [_image_to_data_url(img) for img in images if img]
+    if not urls:
+        raise VisionError("没有图片")
+    raw = await chat_with_images(model, CARD_PROMPT, urls)
+    data = _extract_json(raw)
+    keys = [
+        "language", "name", "sex", "note", "department", "businessKeywords",
+        "productServiceType", "company", "website", "email", "phone",
+    ]
+    card = {k: str(data.get(k) or "").strip() for k in keys}
+    lang = card["language"].upper()
+    card["language"] = lang if lang in ("JP", "CN", "EN") else ("JP" if "日" in lang else "CN" if "中" in lang else "EN" if "英" in lang else lang[:2])
+    return card
