@@ -81,6 +81,8 @@ async def add_contact(
     importer: str,
     front_image_url: str = "",
     back_image_url: str = "",
+    front_image_data: str = "",
+    back_image_data: str = "",
 ) -> dict[str, Any]:
     return await run_script(
         cfg,
@@ -92,6 +94,8 @@ async def add_contact(
             "importer": importer,
             "frontImageUrl": front_image_url,
             "backImageUrl": back_image_url,
+            "frontImageData": front_image_data,
+            "backImageData": back_image_data,
         },
         timeout=120,
     )

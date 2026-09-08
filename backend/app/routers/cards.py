@@ -12,7 +12,7 @@ from ..database import get_db
 from ..models import CardRecord, Category, User
 from ..schemas import Card, ConfirmIn, RecognizeOut, RecordOut
 from ..services import kdocs
-from ..services.vision import VisionError, recognize_card
+from ..services.vision import VisionError, image_to_data_url, recognize_card
 from .vision_models import get_default_model
 
 router = APIRouter(prefix="/api/cards", tags=["cards"])
@@ -23,6 +23,19 @@ MAX_SIZE = 15 * 1024 * 1024
 
 def public_url(rel: str) -> str:
     return f"{settings.PUBLIC_BASE_URL.rstrip('/')}/uploads/{rel}" if rel else ""
+
+
+def image_data(rel: str) -> str:
+    """金山 AddPicture 只接受 kdocs 同域 URL 或 Base64，因此把图片压缩后以 Base64 传给脚本。"""
+    if not rel:
+        return ""
+    path = settings.UPLOAD_DIR / rel
+    if not path.exists():
+        return ""
+    try:
+        return image_to_data_url(path.read_bytes(), max_side=720, quality=72)
+    except OSError:
+        return ""
 
 
 async def _save_upload(file: UploadFile | None) -> tuple[str, bytes]:
@@ -115,6 +128,8 @@ async def confirm(body: ConfirmIn, user: User = Depends(get_current_user), db: S
             importer=importer,
             front_image_url=public_url(body.front_image),
             back_image_url=public_url(body.back_image),
+            front_image_data=image_data(body.front_image),
+            back_image_data=image_data(body.back_image),
         )
         record.kdocs_row = int(result.get("row") or 0)
         record.duplicate = bool(result.get("duplicate"))
@@ -148,6 +163,8 @@ async def retry(record_id: int, user: User = Depends(get_current_user), db: Sess
             importer=r.importer,
             front_image_url=public_url(r.front_image),
             back_image_url=public_url(r.back_image),
+            front_image_data=image_data(r.front_image),
+            back_image_data=image_data(r.back_image),
         )
         r.kdocs_row, r.duplicate = int(result.get("row") or 0), bool(result.get("duplicate"))
         r.status, r.error = "synced", ""

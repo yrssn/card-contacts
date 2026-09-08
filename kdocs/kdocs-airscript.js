@@ -101,9 +101,12 @@ function findDuplicate(sheet, card) {
   return 0;
 }
 
-function setImageCell(sheet, address, url) {
+// AddPicture 的 FileName 只接受 Base64（data:image/...）或 kdocs 同域 URL，
+// 因此后端会把压缩后的图片以 Base64 随请求传来（frontImageData / backImageData），URL 仅作兜底。
+function setImageCell(sheet, address, source, fallbackUrl) {
   const cell = sheet.Range(address);
-  if (!text(url)) return false;
+  const url = text(source) || text(fallbackUrl);
+  if (!url) return false;
   cell.ClearContents();
   let before = 0;
   try { before = sheet.Shapes.Count || 0; } catch (_) {}
@@ -123,12 +126,12 @@ function setImageCell(sheet, address, url) {
   let after = before;
   try { after = sheet.Shapes.Count || 0; } catch (_) {}
   if (after > before) return true;
-  throw new Error("图片未能插入（请确认图片地址公网可访问）：" + text(url));
+  throw new Error("图片未能插入：" + (url.indexOf("data:") === 0 ? "Base64 图片被拒绝" : url));
 }
 
-function tryImage(sheet, address, url, errors) {
+function tryImage(sheet, address, source, fallbackUrl, errors) {
   try {
-    return setImageCell(sheet, address, url);
+    return setImageCell(sheet, address, source, fallbackUrl);
   } catch (error) {
     errors.push(`${address}: ${String(error && error.message ? error.message : error)}`);
     return false;
@@ -172,10 +175,11 @@ function addContact(payload) {
     sheet.Range(`A${row}:M${row}`).Value2 = values;
   }
   if (text(payload.importer)) sheet.Range(`${IMPORTER_COL}${row}`).Value2 = text(payload.importer);
-  if (text(payload.frontImageUrl) || text(payload.backImageUrl)) configurePhotoCells(sheet, row);
+  const hasImages = text(payload.frontImageData) || text(payload.frontImageUrl) || text(payload.backImageData) || text(payload.backImageUrl);
+  if (hasImages) configurePhotoCells(sheet, row);
   const imageErrors = [];
-  const frontAdded = tryImage(sheet, `N${row}`, payload.frontImageUrl, imageErrors);
-  const backAdded = tryImage(sheet, `O${row}`, payload.backImageUrl, imageErrors);
+  const frontAdded = tryImage(sheet, `N${row}`, payload.frontImageData, payload.frontImageUrl, imageErrors);
+  const backAdded = tryImage(sheet, `O${row}`, payload.backImageData, payload.backImageUrl, imageErrors);
   const values = sheet.Range(`A${row}:${LAST_COL}${row}`).Value2[0] || [];
   return {
     ok: true,
@@ -194,7 +198,7 @@ function main() {
     if (payload.action === "add") return addContact(payload);
     if (payload.action === "ensure_sheet") return ensureSheet(payload.sheetName);
     if (payload.action === "list_sheets") return { ok: true, sheets: listSheets() };
-    if (payload.action === "health") return { ok: true, version: "card-contacts-v1", sheets: listSheets() };
+    if (payload.action === "health") return { ok: true, version: "card-contacts-v2", sheets: listSheets() };
     return { ok: false, error: "不支持的操作" };
   } catch (error) {
     return { ok: false, error: String(error && error.message ? error.message : error) };

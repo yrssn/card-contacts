@@ -31,13 +31,13 @@ class VisionError(Exception):
     pass
 
 
-def _image_to_data_url(data: bytes, max_side: int = 1600) -> str:
+def image_to_data_url(data: bytes, max_side: int = 1600, quality: int = 88) -> str:
     img = Image.open(io.BytesIO(data))
     img = img.convert("RGB")
     if max(img.size) > max_side:
         img.thumbnail((max_side, max_side))
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=88)
+    img.save(buf, format="JPEG", quality=quality)
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
@@ -126,7 +126,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 
 
 async def recognize_card(model: VisionModel, images: list[bytes]) -> dict[str, str]:
-    urls = [_image_to_data_url(img) for img in images if img]
+    urls = [image_to_data_url(img) for img in images if img]
     if not urls:
         raise VisionError("没有图片")
     try:
