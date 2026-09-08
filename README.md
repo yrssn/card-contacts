@@ -22,15 +22,20 @@
 
 ## 一、本地启动
 
-### 后端
+### 后端（Conda）
 
-```bash
+```powershell
+# 在仓库根目录
+conda env create -f environment.yml        # 创建环境 card-contacts（Python 3.11 + requirements）
+conda activate card-contacts
+
 cd backend
-python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env                                  # 按需修改
-python run.py                                         # http://localhost:8000  文档 /docs
+copy .env.example .env                     # Mac/Linux: cp .env.example .env，按需修改
+python run.py                              # http://localhost:8000  接口文档 /docs
 ```
+
+以后更新依赖：`conda activate card-contacts && pip install -r backend/requirements.txt`。
+不用 conda 也可以：`python -m venv .venv && .venv\Scripts\activate && pip install -r requirements.txt`。
 
 首次启动自动建表并创建管理员：`admin / admin123`（可在 `.env` 中改 `ADMIN_USERNAME` / `ADMIN_PASSWORD`，登录后请修改密码）。
 同时会预置 6 个默认分类：1 餐饮 / 2 二奢 / 3 推广 / 4.综合 / 5 电商 / 6 旅游。
