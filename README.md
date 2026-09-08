@@ -121,3 +121,19 @@ backend/
 frontend/src/views/      CardScan / Records / Categories / VisionModels / Kdocs / Users
 kdocs/kdocs-airscript.js 粘贴到金山文档脚本编辑器
 ```
+
+## 线上部署（Docker + 已有 nginx 反代）
+
+以 `cards.moneymoon.jp` 为例，服务器上：
+
+```bash
+cd /opt && git clone https://github.com/yrssn/card-contacts.git && cd card-contacts
+cp deploy/env.production.example backend/.env   # 改 SECRET_KEY / ADMIN_PASSWORD / PUBLIC_BASE_URL
+docker compose up -d --build                     # 监听 127.0.0.1:9282
+curl http://127.0.0.1:9282/api/health
+```
+
+反代：把 `deploy/nginx-cards.conf` 放进 shared-proxy 的 conf.d，证书用 certbot 申请后 `docker exec shared-proxy nginx -s reload`。
+若 shared-proxy 无法解析 `host.docker.internal`，把 `proxy_pass` 改成 `http://<宿主机内网IP>:9282`，或把 `docker-compose.yml` 里 `networks.proxy.name` 改成 shared-proxy 所在网络名后直接 `proxy_pass http://card-contacts:8000`。
+
+`PUBLIC_BASE_URL` 必须是这个 https 域名，金山文档才能拉到名片照片。

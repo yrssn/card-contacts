@@ -1,10 +1,21 @@
 services:
   app:
     build: .
+    image: card-contacts:latest
+    container_name: card-contacts
     ports:
-      - "8000:8000"
+      - "127.0.0.1:9282:8000"
     env_file:
       - backend/.env
     volumes:
       - ./backend/data:/app/data
     restart: unless-stopped
+    networks:
+      - default
+      - proxy
+
+# shared-proxy 所在的 docker 网络名，按实际修改（docker network ls 查看）
+networks:
+  proxy:
+    external: true
+    name: bridge
