@@ -22,7 +22,9 @@
       <el-table-column label="导入人" prop="importer" width="100" />
       <el-table-column label="状态" width="150">
         <template #default="{ row }">
-          <el-tag v-if="row.status === 'synced'" type="success">已同步 行{{ row.kdocs_row }}{{ row.duplicate ? '（重复）' : '' }}</el-tag>
+          <el-tooltip v-if="row.status === 'synced'" :content="row.warning || '文字与照片均已写入'">
+            <el-tag :type="row.warning ? 'warning' : 'success'">已同步 行{{ row.kdocs_row }}{{ row.duplicate ? '（重复）' : '' }}{{ row.warning ? '（无照片）' : '' }}</el-tag>
+          </el-tooltip>
           <el-tooltip v-else :content="row.error"><el-tag type="danger">同步失败</el-tag></el-tooltip>
         </template>
       </el-table-column>

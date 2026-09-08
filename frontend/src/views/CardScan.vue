@@ -97,6 +97,8 @@
     <el-dialog v-model="doneVisible" title="录入成功" width="420px">
       <el-result icon="success" :title="done?.duplicate ? '已存在，已补充照片/导入人' : '已写入金山文档'"
         :sub-title="`工作表「${currentCategory?.sheet_name}」第 ${done?.kdocs_row} 行`" />
+      <el-alert v-if="done?.warning" type="warning" :closable="false" title="文字已录入，但名片照片未能插入"
+        :description="`${done.warning}。请确认后端 .env 的 PUBLIC_BASE_URL 是公网可访问地址。`" />
       <template #footer>
         <el-button type="primary" @click="doneVisible = false; reset()">继续下一张</el-button>
       </template>

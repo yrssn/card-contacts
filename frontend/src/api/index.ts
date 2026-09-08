@@ -100,6 +100,7 @@ export interface CardRecord {
   duplicate: boolean
   status: string
   error: string
+  warning: string
   created_at: string
 }
 

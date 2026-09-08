@@ -114,9 +114,18 @@ function setImageCell(sheet, address, url) {
     Math.max(40, cell.Width - 4),
     Math.max(40, cell.Height - 4),
   );
-  if (!shape) throw new Error("金山文档没有返回图片对象");
+  if (!shape) throw new Error("金山文档没有返回图片对象（通常是图片地址公网无法访问）");
   try { shape.Placement = 1; } catch (_) {}
   return true;
+}
+
+function tryImage(sheet, address, url, errors) {
+  try {
+    return setImageCell(sheet, address, url);
+  } catch (error) {
+    errors.push(`${address}: ${String(error && error.message ? error.message : error)}`);
+    return false;
+  }
 }
 
 function configurePhotoCells(sheet, row) {
@@ -157,8 +166,9 @@ function addContact(payload) {
   }
   if (text(payload.importer)) sheet.Range(`${IMPORTER_COL}${row}`).Value2 = text(payload.importer);
   if (text(payload.frontImageUrl) || text(payload.backImageUrl)) configurePhotoCells(sheet, row);
-  const frontAdded = setImageCell(sheet, `N${row}`, payload.frontImageUrl);
-  const backAdded = setImageCell(sheet, `O${row}`, payload.backImageUrl);
+  const imageErrors = [];
+  const frontAdded = tryImage(sheet, `N${row}`, payload.frontImageUrl, imageErrors);
+  const backAdded = tryImage(sheet, `O${row}`, payload.backImageUrl, imageErrors);
   const values = sheet.Range(`A${row}:${LAST_COL}${row}`).Value2[0] || [];
   return {
     ok: true,
@@ -167,6 +177,7 @@ function addContact(payload) {
     sheet: sheetName,
     values,
     images: { front: frontAdded, back: backAdded },
+    imageError: imageErrors.join("；"),
   };
 }
 

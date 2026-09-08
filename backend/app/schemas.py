@@ -156,4 +156,5 @@ class RecordOut(BaseModel):
     duplicate: bool
     status: str
     error: str
+    warning: str = ""
     created_at: datetime

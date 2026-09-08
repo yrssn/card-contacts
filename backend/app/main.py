@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from sqlalchemy import inspect, text
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,6 +17,10 @@ from .routers.categories import seed_categories
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as conn:
+        existing = {c["name"] for c in inspect(conn).get_columns("card_records")}
+        if "warning" not in existing:
+            conn.execute(text("ALTER TABLE card_records ADD COLUMN warning TEXT DEFAULT ''"))
     with SessionLocal() as db:
         if not db.query(User).filter(User.role == "admin").first():
             db.add(

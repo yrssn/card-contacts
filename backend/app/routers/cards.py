@@ -84,6 +84,7 @@ def to_record_out(r: CardRecord) -> RecordOut:
         duplicate=r.duplicate,
         status=r.status,
         error=r.error,
+        warning=r.warning,
         created_at=r.created_at,
     )
 
@@ -117,6 +118,7 @@ async def confirm(body: ConfirmIn, user: User = Depends(get_current_user), db: S
         )
         record.kdocs_row = int(result.get("row") or 0)
         record.duplicate = bool(result.get("duplicate"))
+        record.warning = str(result.get("imageError") or "")
         record.status = "synced"
     except kdocs.KdocsError as exc:
         record.status = "failed"
@@ -149,6 +151,7 @@ async def retry(record_id: int, user: User = Depends(get_current_user), db: Sess
         )
         r.kdocs_row, r.duplicate = int(result.get("row") or 0), bool(result.get("duplicate"))
         r.status, r.error = "synced", ""
+        r.warning = str(result.get("imageError") or "")
     except kdocs.KdocsError as exc:
         r.status, r.error = "failed", str(exc)
     db.commit()
