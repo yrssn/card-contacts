@@ -174,7 +174,38 @@ function hasHyperlink(cell) {
   try { return (cell.Hyperlinks.Count || 0) > 0; } catch (_) { return false; }
 }
 
-// 环境不支持插图时的兜底：写入可点击的照片超链接（不用公式，公式在部分表里会被当成文本）。
+function isRealFormula(cell) {
+  try { if (cell.HasFormula === true) return true; } catch (_) {}
+  const shown = text(cell.Text);
+  const formula = text(cell.Formula);
+  return formula.indexOf("=") === 0 && shown !== formula && shown.indexOf("#") !== 0;
+}
+
+// 用 =IMAGE(url) 公式让单元格直接显示图片；依次尝试几种写公式的方式，
+// 每次检查是否真的成了公式（部分写法会被当成文本）。
+function setImageFormula(sheet, address, url) {
+  const cell = sheet.Range(address);
+  const formula = '=IMAGE("' + url.replace(/"/g, '""') + '")';
+  const setters = [
+    function () { cell.Formula = formula; },
+    function () { cell.Formula2 = formula; },
+    function () { cell.FormulaLocal = formula; },
+    function () { cell.Value2 = formula; },
+    function () { cell.Value = formula; },
+  ];
+  try { cell.NumberFormat = "General"; } catch (_) {}
+  for (let i = 0; i < setters.length; i += 1) {
+    try {
+      cell.ClearContents();
+      setters[i]();
+      if (isRealFormula(cell)) return true;
+    } catch (_) {}
+  }
+  cell.ClearContents();
+  return false;
+}
+
+// 公式不可用时的兜底：写入可点击的照片超链接。
 function setImageLink(sheet, address, url, label) {
   const cell = sheet.Range(address);
   if (!url) return "";
@@ -193,10 +224,11 @@ function setImageLink(sheet, address, url, label) {
 }
 
 function tryImage(sheet, address, source, fallbackUrl, label, errors) {
+  const url = text(fallbackUrl);
+  if (url && setImageFormula(sheet, address, url)) return true;
   try {
     return setImageCell(sheet, address, source, fallbackUrl);
   } catch (error) {
-    const url = text(fallbackUrl);
     const mode = setImageLink(sheet, address, url, label);
     if (mode) {
       errors.push(`${address}: 该表不支持脚本插图，已改为写入照片链接`);
@@ -267,7 +299,7 @@ function main() {
     if (payload.action === "add") return addContact(payload);
     if (payload.action === "ensure_sheet") return ensureSheet(payload.sheetName);
     if (payload.action === "list_sheets") return { ok: true, sheets: listSheets() };
-    if (payload.action === "health") return { ok: true, version: "card-contacts-v5", sheets: listSheets() };
+    if (payload.action === "health") return { ok: true, version: "card-contacts-v6", sheets: listSheets() };
     return { ok: false, error: "不支持的操作" };
   } catch (error) {
     return { ok: false, error: String(error && error.message ? error.message : error) };
