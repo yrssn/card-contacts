@@ -69,9 +69,25 @@ async def chat_with_images(model: VisionModel, prompt: str, image_data_urls: lis
     if resp.status_code != 200:
         raise VisionError(f"模型返回 HTTP {resp.status_code}：{resp.text[:400]}")
     try:
-        return resp.json()["choices"][0]["message"]["content"]
-    except (KeyError, IndexError, ValueError, TypeError) as exc:
+        choice = resp.json()["choices"][0]
+        message = choice.get("message") or {}
+    except (KeyError, IndexError, ValueError, TypeError, AttributeError) as exc:
         raise VisionError(f"无法解析模型返回：{resp.text[:400]}") from exc
+    content = message.get("content")
+    if isinstance(content, list):
+        content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
+    content = (content or "").strip()
+    if not content:
+        reasoning = (message.get("reasoning_content") or message.get("reasoning") or "").strip()
+        if reasoning and "{" in reasoning:
+            return reasoning
+        finish = choice.get("finish_reason")
+        if finish == "length":
+            raise VisionError(f"模型输出被截断（max_tokens={model.max_tokens} 太小，推理模型建议 4000 以上）")
+        if finish == "content_filter":
+            raise VisionError("模型触发内容审核，未返回结果")
+        raise VisionError(f"模型返回了空内容（finish_reason={finish}）：{resp.text[:300]}")
+    return content
 
 
 async def verify_vision(model: VisionModel) -> tuple[bool, str]:
@@ -113,8 +129,14 @@ async def recognize_card(model: VisionModel, images: list[bytes]) -> dict[str, s
     urls = [_image_to_data_url(img) for img in images if img]
     if not urls:
         raise VisionError("没有图片")
-    raw = await chat_with_images(model, CARD_PROMPT, urls)
-    data = _extract_json(raw)
+    try:
+        raw = await chat_with_images(model, CARD_PROMPT, urls)
+        data = _extract_json(raw)
+    except VisionError:
+        if len(urls) < 2:
+            raise
+        raw = await chat_with_images(model, CARD_PROMPT, urls[:1])
+        data = _extract_json(raw)
     keys = [
         "language", "name", "sex", "note", "department", "businessKeywords",
         "productServiceType", "company", "website", "email", "phone",
