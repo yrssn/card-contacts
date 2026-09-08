@@ -170,10 +170,45 @@ function setImageCell(sheet, address, source, fallbackUrl) {
   throw new Error("图片未能插入 [" + reasons.join("; ") + "]");
 }
 
-function tryImage(sheet, address, source, fallbackUrl, errors) {
+function isFormulaError(cell) {
+  const shown = text(cell.Text);
+  return shown.indexOf("#") === 0 || shown === "";
+}
+
+// 环境不支持插图时的兜底：先试 =IMAGE() 公式显示缩略图，不行就写可点击的照片链接。
+function setImageLink(sheet, address, url, label) {
+  const cell = sheet.Range(address);
+  if (!url) return "";
+  try {
+    cell.Formula = '=IMAGE("' + url.replace(/"/g, '""') + '")';
+    if (!isFormulaError(cell)) return "formula";
+  } catch (_) {}
+  cell.ClearContents();
+  try {
+    cell.Formula = '=HYPERLINK("' + url.replace(/"/g, '""') + '","' + label + '")';
+    if (!isFormulaError(cell)) return "hyperlink";
+  } catch (_) {}
+  cell.ClearContents();
+  try {
+    cell.Value2 = url;
+    sheet.Hyperlinks.Add(cell, url, null, null, label);
+    return "hyperlink";
+  } catch (_) {}
+  cell.Value2 = url;
+  return "url";
+}
+
+function tryImage(sheet, address, source, fallbackUrl, label, errors) {
   try {
     return setImageCell(sheet, address, source, fallbackUrl);
   } catch (error) {
+    const url = text(fallbackUrl);
+    const mode = setImageLink(sheet, address, url, label);
+    if (mode === "formula") return true;
+    if (mode) {
+      errors.push(`${address}: 该表不支持脚本插图，已改为写入照片链接`);
+      return false;
+    }
     errors.push(`${address}: ${String(error && error.message ? error.message : error)}`);
     return false;
   }
@@ -219,8 +254,8 @@ function addContact(payload) {
   const hasImages = text(payload.frontImageData) || text(payload.frontImageUrl) || text(payload.backImageData) || text(payload.backImageUrl);
   if (hasImages) configurePhotoCells(sheet, row);
   const imageErrors = [];
-  const frontAdded = tryImage(sheet, `N${row}`, payload.frontImageData, payload.frontImageUrl, imageErrors);
-  const backAdded = tryImage(sheet, `O${row}`, payload.backImageData, payload.backImageUrl, imageErrors);
+  const frontAdded = tryImage(sheet, `N${row}`, payload.frontImageData, payload.frontImageUrl, "正面照片", imageErrors);
+  const backAdded = tryImage(sheet, `O${row}`, payload.backImageData, payload.backImageUrl, "反面照片", imageErrors);
   const values = sheet.Range(`A${row}:${LAST_COL}${row}`).Value2[0] || [];
   return {
     ok: true,
@@ -239,7 +274,7 @@ function main() {
     if (payload.action === "add") return addContact(payload);
     if (payload.action === "ensure_sheet") return ensureSheet(payload.sheetName);
     if (payload.action === "list_sheets") return { ok: true, sheets: listSheets() };
-    if (payload.action === "health") return { ok: true, version: "card-contacts-v3", sheets: listSheets() };
+    if (payload.action === "health") return { ok: true, version: "card-contacts-v4", sheets: listSheets() };
     return { ok: false, error: "不支持的操作" };
   } catch (error) {
     return { ok: false, error: String(error && error.message ? error.message : error) };
