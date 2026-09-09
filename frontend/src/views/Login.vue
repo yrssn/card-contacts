@@ -36,7 +36,7 @@ async function submit() {
 
 <style scoped>
 .login-bg { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1f2d3d, #3a506b); }
-.login-card { width: 380px; padding: 12px; }
+.login-card { width: 380px; max-width: 92vw; padding: 12px; }
 h2 { margin: 0 0 4px; text-align: center; }
 .tip { text-align: center; margin: 0 0 20px; }
 </style>

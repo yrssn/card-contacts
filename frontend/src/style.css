@@ -4,3 +4,20 @@ html, body, #app { margin: 0; height: 100%; font-family: -apple-system, 'PingFan
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .page-header h2 { margin: 0; font-size: 20px; }
 .tip { color: #909399; font-size: 13px; }
+
+@media (max-width: 767px) {
+  .page { padding: 12px; }
+  .page-header { flex-wrap: wrap; gap: 8px; }
+  .page-header h2 { font-size: 17px; }
+  .el-main { padding: 0 !important; }
+  .el-header { padding: 0 12px !important; }
+  .el-dialog { width: 94vw !important; max-width: 94vw; margin-top: 8vh !important; }
+  .el-form-item { display: block; }
+  .el-form-item__label { width: auto !important; justify-content: flex-start; margin-bottom: 2px; height: auto; line-height: 22px; }
+  .el-form-item__content { margin-left: 0 !important; }
+  .el-col > .el-card { margin-bottom: 12px; }
+  .el-table { font-size: 12px; }
+  .el-radio-group { flex-wrap: wrap; gap: 6px; }
+  .el-radio-button { margin-bottom: 4px; }
+  .el-radio-button__inner { border-radius: 4px !important; border-left: 1px solid #dcdfe6 !important; }
+}

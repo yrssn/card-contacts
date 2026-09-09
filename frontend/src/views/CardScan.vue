@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <el-steps :active="step" finish-status="success" simple style="margin-bottom:20px">
+    <el-steps :active="step" finish-status="success" simple class="steps">
       <el-step title="拍摄 / 上传" />
       <el-step title="识别" />
       <el-step title="确认入库" />
@@ -23,7 +23,7 @@
             <div class="uploader">
               <div class="label">正面 <span class="required">*</span></div>
               <label class="drop">
-                <input type="file" accept="image/*" capture="environment" hidden @change="onPick($event, 'front')" />
+                <input type="file" accept="image/*" hidden @change="onPick($event, 'front')" />
                 <img v-if="frontPreview" :src="frontPreview" />
                 <div v-else class="placeholder"><el-icon :size="36"><Camera /></el-icon><span>点击拍照或选择图片</span></div>
               </label>
@@ -31,7 +31,7 @@
             <div v-if="mode === 'double'" class="uploader">
               <div class="label">反面</div>
               <label class="drop">
-                <input type="file" accept="image/*" capture="environment" hidden @change="onPick($event, 'back')" />
+                <input type="file" accept="image/*" hidden @change="onPick($event, 'back')" />
                 <img v-if="backPreview" :src="backPreview" />
                 <div v-else class="placeholder"><el-icon :size="36"><Camera /></el-icon><span>点击拍照或选择图片</span></div>
               </label>
@@ -66,19 +66,19 @@
             </el-form-item>
             <el-divider />
             <el-row :gutter="12">
-              <el-col :span="12"><el-form-item label="姓名"><el-input v-model="card.name" /></el-form-item></el-col>
-              <el-col :span="6"><el-form-item label="语种" label-width="60px">
+              <el-col :xs="24" :sm="12"><el-form-item label="姓名"><el-input v-model="card.name" /></el-form-item></el-col>
+              <el-col :xs="12" :sm="6"><el-form-item label="语种" label-width="60px">
                 <el-select v-model="card.language"><el-option value="JP" /><el-option value="CN" /><el-option value="EN" /></el-select>
               </el-form-item></el-col>
-              <el-col :span="6"><el-form-item label="性别" label-width="60px">
+              <el-col :xs="12" :sm="6"><el-form-item label="性别" label-width="60px">
                 <el-select v-model="card.sex" clearable><el-option value="男" /><el-option value="女" /></el-select>
               </el-form-item></el-col>
             </el-row>
             <el-form-item label="公司名"><el-input v-model="card.company" /></el-form-item>
             <el-form-item label="职位"><el-input v-model="card.department" placeholder="部门 + 职位" /></el-form-item>
             <el-row :gutter="12">
-              <el-col :span="12"><el-form-item label="主营业务关键词"><el-input v-model="card.businessKeywords" maxlength="10" show-word-limit /></el-form-item></el-col>
-              <el-col :span="12"><el-form-item label="产品/服务类型"><el-input v-model="card.productServiceType" maxlength="10" show-word-limit /></el-form-item></el-col>
+              <el-col :xs="24" :sm="12"><el-form-item label="主营业务关键词"><el-input v-model="card.businessKeywords" maxlength="10" show-word-limit /></el-form-item></el-col>
+              <el-col :xs="24" :sm="12"><el-form-item label="产品/服务类型"><el-input v-model="card.productServiceType" maxlength="10" show-word-limit /></el-form-item></el-col>
             </el-row>
             <el-form-item label="电话"><el-input v-model="card.phone" placeholder="多个用 / 分隔" /></el-form-item>
             <el-form-item label="邮箱"><el-input v-model="card.email" placeholder="多个用 / 分隔" /></el-form-item>
@@ -87,8 +87,8 @@
             <el-form-item label="导入人"><el-input :model-value="store.user?.display_name || store.user?.username" disabled /></el-form-item>
           </el-form>
 
-          <div style="display:flex; justify-content:flex-end; gap:10px">
-            <el-button type="success" :disabled="!result || !categoryKey" :loading="confirming" @click="confirm">确认并录入金山文档</el-button>
+          <div class="confirm-bar">
+            <el-button type="success" class="confirm-btn" :disabled="!result || !categoryKey" :loading="confirming" @click="confirm">确认并录入金山文档</el-button>
           </div>
         </el-card>
       </el-col>
@@ -186,7 +186,14 @@ function reset() {
 </script>
 
 <style scoped>
-.card-title { display: flex; justify-content: space-between; align-items: center; }
+.card-title { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+.steps { margin-bottom: 20px; }
+.confirm-bar { display: flex; justify-content: flex-end; gap: 10px; }
+@media (max-width: 767px) {
+  .steps { display: none; }
+  .uploaders { flex-direction: column; }
+  .confirm-btn { width: 100%; }
+}
 .uploaders { display: flex; gap: 12px; }
 .uploader { flex: 1; }
 .label { font-size: 13px; margin-bottom: 6px; color: #606266; }
