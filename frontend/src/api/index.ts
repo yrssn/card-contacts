@@ -162,10 +162,11 @@ export const api = {
   testSearch: (data: { company: string; website?: string; language?: string }) => http.post<any, EnrichOut>('/api/search/test', data),
   enrichCompany: (data: { company: string; website?: string; language?: string }) => http.post<any, EnrichOut>('/api/search/enrich', data),
 
-  recognize: (front: File, back?: File | null) => {
+  recognize: (front: File, back?: File | null, enrich = true) => {
     const fd = new FormData()
     fd.append('front', front)
     if (back) fd.append('back', back)
+    fd.append('enrich', enrich ? '1' : '0')
     return http.post<any, RecognizeOut>('/api/cards/recognize', fd)
   },
   confirm: (data: { category_key: string; card: Card; front_image: string; back_image: string }) =>

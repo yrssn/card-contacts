@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
@@ -59,6 +59,7 @@ async def _save_upload(file: UploadFile | None) -> tuple[str, bytes]:
 async def recognize(
     front: UploadFile = File(...),
     back: UploadFile | None = File(None),
+    enrich: str = Form("1"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -74,7 +75,7 @@ async def recognize(
 
     summary, search_error, sources = "", "", []
     search_cfg = company_search.get_config(db)
-    if card.get("company") and company_search.is_enabled(search_cfg):
+    if enrich not in ("0", "false") and card.get("company") and company_search.is_enabled(search_cfg):
         try:
             info = await company_search.enrich_company(
                 search_cfg, card["company"], card.get("website", ""), card.get("language", "")

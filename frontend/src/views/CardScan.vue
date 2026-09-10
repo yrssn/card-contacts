@@ -43,6 +43,10 @@
               {{ recognizing ? '识别中…' : '开始识别' }}
             </el-button>
             <el-button @click="reset">重新开始</el-button>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:6px">
+              <el-switch v-model="autoEnrich" />
+              <span class="tip" style="margin:0">联网自动填充公司信息</span>
+            </div>
           </div>
           <p class="tip" style="margin-top:10px">保持光线充足、文字清晰、尽量避免反光。支持中、日、英名片。</p>
         </el-card>
@@ -117,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api, type Card, type CardRecord, type Category, type RecognizeOut } from '@/api'
 import { useUserStore } from '@/stores/user'
@@ -137,6 +141,8 @@ const categoryKey = ref('')
 const doneVisible = ref(false)
 const done = ref<CardRecord | null>(null)
 const enriching = ref(false)
+const autoEnrich = ref(localStorage.getItem('autoEnrich') !== '0')
+watch(autoEnrich, (v) => localStorage.setItem('autoEnrich', v ? '1' : '0'))
 const summary = ref('')
 const searchError = ref('')
 const sources = ref<{ title: string; url: string }[]>([])
@@ -164,7 +170,7 @@ async function recognize() {
   if (!frontFile.value) return
   recognizing.value = true
   try {
-    result.value = await api.recognize(frontFile.value, mode.value === 'double' ? backFile.value : null)
+    result.value = await api.recognize(frontFile.value, mode.value === 'double' ? backFile.value : null, autoEnrich.value)
     Object.assign(card, result.value.card)
     summary.value = result.value.company_summary || ''
     searchError.value = result.value.search_error || ''
