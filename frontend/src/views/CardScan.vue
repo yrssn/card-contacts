@@ -183,6 +183,7 @@ async function enrich() {
     const info = await api.enrichCompany({ company: card.company, website: card.website, language: card.language })
     if (info.businessKeywords) card.businessKeywords = info.businessKeywords
     if (info.productServiceType) card.productServiceType = info.productServiceType
+    if (info.website && !card.website) card.website = info.website
     summary.value = info.summary
     sources.value = info.sources || []
     searchError.value = ''

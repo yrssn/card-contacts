@@ -119,6 +119,10 @@ class SearchConfigIn(BaseModel):
     api_key: str = ""
     enabled: bool = True
     max_results: int = Field(default=5, ge=1, le=10)
+    llm_base_url: str = "https://api.openai.com/v1"
+    llm_api_key: str = ""
+    llm_model: str = ""
+    llm_max_tokens: int = Field(default=1500, ge=200, le=32000)
 
 
 class SearchConfigOut(BaseModel):
@@ -127,6 +131,11 @@ class SearchConfigOut(BaseModel):
     enabled: bool
     max_results: int
     configured: bool
+    llm_base_url: str
+    llm_api_key_masked: str
+    llm_model: str
+    llm_max_tokens: int
+    llm_configured: bool
 
 
 class EnrichIn(BaseModel):
@@ -136,6 +145,7 @@ class EnrichIn(BaseModel):
 
 
 class EnrichOut(BaseModel):
+    website: str = ""
     businessKeywords: str = ""
     productServiceType: str = ""
     summary: str = ""

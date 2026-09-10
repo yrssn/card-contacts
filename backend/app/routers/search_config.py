@@ -6,19 +6,26 @@ from ..database import get_db
 from ..models import User
 from ..schemas import EnrichIn, EnrichOut, SearchConfigIn, SearchConfigOut
 from ..services import company_search
-from .vision_models import get_default_model
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 
+def _mask(k: str) -> str:
+    return (k[:6] + "****" + k[-4:]) if len(k) > 12 else ("****" if k else "")
+
+
 def to_out(cfg) -> SearchConfigOut:
-    k = cfg.api_key
     return SearchConfigOut(
         provider=cfg.provider,
-        api_key_masked=(k[:6] + "****" + k[-4:]) if len(k) > 12 else ("****" if k else ""),
+        api_key_masked=_mask(cfg.api_key),
         enabled=cfg.enabled,
         max_results=cfg.max_results,
         configured=company_search.is_configured(cfg),
+        llm_base_url=cfg.llm_base_url,
+        llm_api_key_masked=_mask(cfg.llm_api_key),
+        llm_model=cfg.llm_model,
+        llm_max_tokens=cfg.llm_max_tokens,
+        llm_configured=company_search.llm_configured(cfg),
     )
 
 
@@ -34,6 +41,11 @@ def save_config(body: SearchConfigIn, _: User = Depends(require_admin), db: Sess
         cfg.api_key = body.api_key.strip()
     cfg.enabled = body.enabled
     cfg.max_results = body.max_results
+    if body.llm_api_key and "****" not in body.llm_api_key:
+        cfg.llm_api_key = body.llm_api_key.strip()
+    cfg.llm_base_url = body.llm_base_url.strip() or "https://api.openai.com/v1"
+    cfg.llm_model = body.llm_model.strip()
+    cfg.llm_max_tokens = body.llm_max_tokens
     db.commit()
     db.refresh(cfg)
     return to_out(cfg)
@@ -51,11 +63,8 @@ async def enrich(body: EnrichIn, _: User = Depends(get_current_user), db: Sessio
 
 async def _enrich(body: EnrichIn, db: Session) -> EnrichOut:
     cfg = company_search.get_config(db)
-    model = get_default_model(db)
-    if not model:
-        raise HTTPException(400, "尚未配置视觉模型，无法进行总结")
     try:
-        data = await company_search.enrich_company(cfg, model, body.company, body.website, body.language)
+        data = await company_search.enrich_company(cfg, body.company, body.website, body.language)
     except company_search.SearchError as exc:
         raise HTTPException(502, str(exc))
     return EnrichOut(**data)

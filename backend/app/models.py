@@ -77,6 +77,11 @@ class SearchConfig(Base):
     api_key: Mapped[str] = mapped_column(String(255), default="")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     max_results: Mapped[int] = mapped_column(Integer, default=5)
+    # 总结用的纯文本模型（OpenAI 兼容），与视觉模型独立
+    llm_base_url: Mapped[str] = mapped_column(String(255), default="https://api.openai.com/v1")
+    llm_api_key: Mapped[str] = mapped_column(String(255), default="")
+    llm_model: Mapped[str] = mapped_column(String(128), default="")
+    llm_max_tokens: Mapped[int] = mapped_column(Integer, default=1500)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=now, onupdate=now)
 
 

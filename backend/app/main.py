@@ -21,6 +21,15 @@ def init_db():
         existing = {c["name"] for c in inspect(conn).get_columns("card_records")}
         if "warning" not in existing:
             conn.execute(text("ALTER TABLE card_records ADD COLUMN warning TEXT DEFAULT ''"))
+        existing = {c["name"] for c in inspect(conn).get_columns("search_config")}
+        for col, ddl in (
+            ("llm_base_url", "VARCHAR(255) DEFAULT 'https://api.openai.com/v1'"),
+            ("llm_api_key", "VARCHAR(255) DEFAULT ''"),
+            ("llm_model", "VARCHAR(128) DEFAULT ''"),
+            ("llm_max_tokens", "INTEGER DEFAULT 1500"),
+        ):
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE search_config ADD COLUMN {col} {ddl}"))
     with SessionLocal() as db:
         if not db.query(User).filter(User.role == "admin").first():
             db.add(

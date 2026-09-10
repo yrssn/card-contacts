@@ -72,9 +72,15 @@ export interface SearchConfig {
   enabled: boolean
   max_results: number
   configured: boolean
+  llm_base_url: string
+  llm_api_key_masked: string
+  llm_model: string
+  llm_max_tokens: number
+  llm_configured: boolean
 }
 
 export interface EnrichOut {
+  website: string
   businessKeywords: string
   productServiceType: string
   summary: string

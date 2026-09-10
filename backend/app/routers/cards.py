@@ -77,10 +77,11 @@ async def recognize(
     if card.get("company") and company_search.is_enabled(search_cfg):
         try:
             info = await company_search.enrich_company(
-                search_cfg, model, card["company"], card.get("website", ""), card.get("language", "")
+                search_cfg, card["company"], card.get("website", ""), card.get("language", "")
             )
             card["businessKeywords"] = info["businessKeywords"] or card["businessKeywords"]
             card["productServiceType"] = info["productServiceType"] or card["productServiceType"]
+            card["website"] = card.get("website") or info["website"]
             summary = info["summary"]
             sources = info["sources"]
         except company_search.SearchError as exc:
