@@ -74,7 +74,17 @@
                 <el-select v-model="card.sex" clearable><el-option value="男" /><el-option value="女" /></el-select>
               </el-form-item></el-col>
             </el-row>
-            <el-form-item label="公司名"><el-input v-model="card.company" /></el-form-item>
+            <el-form-item label="公司名">
+              <div style="display:flex; gap:8px; width:100%">
+                <el-input v-model="card.company" />
+                <el-button :loading="enriching" :disabled="!card.company" @click="enrich">重新检索</el-button>
+              </div>
+            </el-form-item>
+            <el-alert v-if="summary" type="success" :closable="false" title="公司概述（联网检索）" style="margin-bottom:14px">
+              <div style="white-space:pre-wrap">{{ summary }}</div>
+              <div v-if="sources.length" class="tip" style="margin-top:6px">来源：<a v-for="s in sources" :key="s.url" :href="s.url" target="_blank" style="margin-right:8px">{{ s.title || s.url }}</a></div>
+            </el-alert>
+            <el-alert v-else-if="searchError" type="warning" :closable="false" :title="`联网检索未成功：${searchError}`" style="margin-bottom:14px" />
             <el-form-item label="职位"><el-input v-model="card.department" placeholder="部门 + 职位" /></el-form-item>
             <el-row :gutter="12">
               <el-col :xs="24" :sm="12"><el-form-item label="主营业务关键词"><el-input v-model="card.businessKeywords" maxlength="10" show-word-limit /></el-form-item></el-col>
@@ -126,6 +136,10 @@ const categories = ref<Category[]>([])
 const categoryKey = ref('')
 const doneVisible = ref(false)
 const done = ref<CardRecord | null>(null)
+const enriching = ref(false)
+const summary = ref('')
+const searchError = ref('')
+const sources = ref<{ title: string; url: string }[]>([])
 
 const emptyCard = (): Card => ({
   language: '', name: '', sex: '', note: '', department: '', businessKeywords: '',
@@ -152,10 +166,29 @@ async function recognize() {
   try {
     result.value = await api.recognize(frontFile.value, mode.value === 'double' ? backFile.value : null)
     Object.assign(card, result.value.card)
+    summary.value = result.value.company_summary || ''
+    searchError.value = result.value.search_error || ''
+    sources.value = result.value.sources || []
     step.value = 2
     ElMessage.success('识别完成，请核对后确认')
   } finally {
     recognizing.value = false
+  }
+}
+
+async function enrich() {
+  if (!card.company) return
+  enriching.value = true
+  try {
+    const info = await api.enrichCompany({ company: card.company, website: card.website, language: card.language })
+    if (info.businessKeywords) card.businessKeywords = info.businessKeywords
+    if (info.productServiceType) card.productServiceType = info.productServiceType
+    summary.value = info.summary
+    sources.value = info.sources || []
+    searchError.value = ''
+    ElMessage.success('已根据网络资料更新主营业务字段')
+  } finally {
+    enriching.value = false
   }
 }
 
@@ -181,6 +214,8 @@ function reset() {
   frontPreview.value = backPreview.value = ''
   result.value = null
   Object.assign(card, emptyCard())
+  summary.value = searchError.value = ''
+  sources.value = []
   step.value = 0
 }
 </script>

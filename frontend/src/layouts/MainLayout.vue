@@ -52,7 +52,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Camera, Collection, Cpu, Document, Menu, Tickets, User } from '@element-plus/icons-vue'
+import { Camera, Collection, Cpu, Document, Menu, Search, Tickets, User } from '@element-plus/icons-vue'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { useIsMobile } from '@/composables/useIsMobile'
@@ -71,6 +71,7 @@ const menus = computed(() => [
     ? [
         { path: '/categories', title: '名片分类', icon: Collection },
         { path: '/models', title: '视觉模型', icon: Cpu },
+        { path: '/search', title: '联网检索', icon: Search },
         { path: '/kdocs', title: '金山文档', icon: Document },
         { path: '/users', title: '用户管理', icon: User },
       ]

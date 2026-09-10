@@ -11,7 +11,7 @@ from ..config import settings
 from ..database import get_db
 from ..models import CardRecord, Category, User
 from ..schemas import Card, ConfirmIn, RecognizeOut, RecordOut
-from ..services import kdocs
+from ..services import company_search, kdocs
 from ..services.vision import VisionError, image_to_data_url, recognize_card
 from .vision_models import get_default_model
 
@@ -71,6 +71,21 @@ async def recognize(
         card = await recognize_card(model, [front_bytes, back_bytes])
     except VisionError as exc:
         raise HTTPException(502, f"识别失败：{exc}")
+
+    summary, search_error, sources = "", "", []
+    search_cfg = company_search.get_config(db)
+    if card.get("company") and company_search.is_enabled(search_cfg):
+        try:
+            info = await company_search.enrich_company(
+                search_cfg, model, card["company"], card.get("website", ""), card.get("language", "")
+            )
+            card["businessKeywords"] = info["businessKeywords"] or card["businessKeywords"]
+            card["productServiceType"] = info["productServiceType"] or card["productServiceType"]
+            summary = info["summary"]
+            sources = info["sources"]
+        except company_search.SearchError as exc:
+            search_error = str(exc)
+
     return RecognizeOut(
         card=Card(**card),
         front_image=front_rel,
@@ -78,6 +93,9 @@ async def recognize(
         front_image_url=public_url(front_rel),
         back_image_url=public_url(back_rel),
         model_used=f"{model.name} ({model.model})",
+        company_summary=summary,
+        search_error=search_error,
+        sources=sources,
     )
 
 

@@ -66,6 +66,21 @@ export interface KdocsConfig {
   configured: boolean
 }
 
+export interface SearchConfig {
+  provider: string
+  api_key_masked: string
+  enabled: boolean
+  max_results: number
+  configured: boolean
+}
+
+export interface EnrichOut {
+  businessKeywords: string
+  productServiceType: string
+  summary: string
+  sources: { title: string; url: string }[]
+}
+
 export interface Card {
   language: string
   name: string
@@ -87,6 +102,9 @@ export interface RecognizeOut {
   front_image_url: string
   back_image_url: string
   model_used: string
+  company_summary: string
+  search_error: string
+  sources: { title: string; url: string }[]
 }
 
 export interface CardRecord {
@@ -132,6 +150,11 @@ export const api = {
   kdocsConfig: () => http.get<any, KdocsConfig>('/api/kdocs/config'),
   saveKdocsConfig: (data: any) => http.put<any, KdocsConfig>('/api/kdocs/config', data),
   testKdocs: () => http.post<any, { ok: boolean; version: string; sheets: string[] }>('/api/kdocs/test'),
+
+  searchConfig: () => http.get<any, SearchConfig>('/api/search/config'),
+  saveSearchConfig: (data: any) => http.put<any, SearchConfig>('/api/search/config', data),
+  testSearch: (data: { company: string; website?: string; language?: string }) => http.post<any, EnrichOut>('/api/search/test', data),
+  enrichCompany: (data: { company: string; website?: string; language?: string }) => http.post<any, EnrichOut>('/api/search/enrich', data),
 
   recognize: (front: File, back?: File | null) => {
     const fd = new FormData()

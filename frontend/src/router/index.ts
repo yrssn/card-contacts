@@ -14,6 +14,7 @@ const router = createRouter({
         { path: 'records', component: () => import('@/views/Records.vue'), meta: { title: '录入记录' } },
         { path: 'categories', component: () => import('@/views/Categories.vue'), meta: { title: '名片分类', admin: true } },
         { path: 'models', component: () => import('@/views/VisionModels.vue'), meta: { title: '视觉模型', admin: true } },
+        { path: 'search', component: () => import('@/views/Search.vue'), meta: { title: '联网检索', admin: true } },
         { path: 'kdocs', component: () => import('@/views/Kdocs.vue'), meta: { title: '金山文档', admin: true } },
         { path: 'users', component: () => import('@/views/Users.vue'), meta: { title: '用户管理', admin: true } },
       ],

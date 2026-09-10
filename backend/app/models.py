@@ -67,6 +67,19 @@ class KdocsConfig(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=now, onupdate=now)
 
 
+class SearchConfig(Base):
+    """联网检索（Tavily）：识别出公司后自动搜索并总结主营业务。"""
+
+    __tablename__ = "search_config"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(32), default="tavily")
+    api_key: Mapped[str] = mapped_column(String(255), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    max_results: Mapped[int] = mapped_column(Integer, default=5)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now, onupdate=now)
+
+
 class CardRecord(Base):
     __tablename__ = "card_records"
 

@@ -11,7 +11,7 @@ from .auth import hash_password
 from .config import settings
 from .database import Base, SessionLocal, engine
 from .models import User
-from .routers import auth_users, cards, categories, kdocs_config, vision_models
+from .routers import auth_users, cards, categories, kdocs_config, search_config, vision_models
 from .routers.categories import seed_categories
 
 
@@ -51,7 +51,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (auth_users, vision_models, categories, kdocs_config, cards):
+for r in (auth_users, vision_models, categories, kdocs_config, search_config, cards):
     app.include_router(r.router)
 
 

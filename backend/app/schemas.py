@@ -115,6 +115,33 @@ class KdocsConfigOut(BaseModel):
     configured: bool
 
 
+class SearchConfigIn(BaseModel):
+    api_key: str = ""
+    enabled: bool = True
+    max_results: int = Field(default=5, ge=1, le=10)
+
+
+class SearchConfigOut(BaseModel):
+    provider: str
+    api_key_masked: str
+    enabled: bool
+    max_results: int
+    configured: bool
+
+
+class EnrichIn(BaseModel):
+    company: str
+    website: str = ""
+    language: str = ""
+
+
+class EnrichOut(BaseModel):
+    businessKeywords: str = ""
+    productServiceType: str = ""
+    summary: str = ""
+    sources: list[dict] = []
+
+
 class Card(BaseModel):
     language: str = ""  # JP / CN / EN
     name: str = ""
@@ -136,6 +163,9 @@ class RecognizeOut(BaseModel):
     front_image_url: str
     back_image_url: str
     model_used: str
+    company_summary: str = ""
+    search_error: str = ""
+    sources: list[dict] = []
 
 
 class ConfirmIn(BaseModel):
