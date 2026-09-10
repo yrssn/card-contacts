@@ -3,14 +3,14 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
 from ..config import settings
 from ..database import get_db
 from ..models import CardRecord, Category, User
-from ..schemas import Card, ConfirmIn, RecognizeOut, RecordOut
+from ..schemas import Card, ConfirmIn, RecognizeOut, RecordOut, RecordPage
 from ..services import company_search, kdocs
 from ..services.vision import VisionError, image_to_data_url, recognize_card
 from .vision_models import get_default_model
@@ -198,9 +198,17 @@ async def retry(record_id: int, user: User = Depends(get_current_user), db: Sess
     return to_record_out(r)
 
 
-@router.get("/records", response_model=list[RecordOut])
-def records(limit: int = 50, mine: bool = False, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("/records", response_model=RecordPage)
+def records(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    mine: bool = False,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     q = db.query(CardRecord)
     if mine or user.role != "admin":
         q = q.filter(CardRecord.user_id == user.id)
-    return [to_record_out(r) for r in q.order_by(CardRecord.id.desc()).limit(min(limit, 200)).all()]
+    total = q.count()
+    rows = q.order_by(CardRecord.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    return RecordPage(items=[to_record_out(r) for r in rows], total=total, page=page, page_size=page_size)

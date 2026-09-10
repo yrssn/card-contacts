@@ -128,6 +128,13 @@ export interface CardRecord {
   created_at: string
 }
 
+export interface RecordPage {
+  items: CardRecord[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export const api = {
   login: (username: string, password: string) =>
     http.post<any, { access_token: string }>('/api/auth/login-json', { username, password }),
@@ -172,5 +179,6 @@ export const api = {
   confirm: (data: { category_key: string; card: Card; front_image: string; back_image: string }) =>
     http.post<any, CardRecord>('/api/cards/confirm', data),
   retry: (id: number) => http.post<any, CardRecord>(`/api/cards/${id}/retry`),
-  records: (mine = false) => http.get<any, CardRecord[]>('/api/cards/records', { params: { mine } }),
+  records: (params: { page: number; page_size: number; mine?: boolean }) =>
+    http.get<any, RecordPage>('/api/cards/records', { params }),
 }

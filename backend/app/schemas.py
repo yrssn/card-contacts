@@ -198,3 +198,10 @@ class RecordOut(BaseModel):
     error: str
     warning: str = ""
     created_at: datetime
+
+
+class RecordPage(BaseModel):
+    items: list[RecordOut]
+    total: int
+    page: int
+    page_size: int

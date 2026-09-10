@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2>录入记录</h2>
       <div>
-        <el-checkbox v-if="store.isAdmin" v-model="mine" @change="load">只看我的</el-checkbox>
+        <el-checkbox v-if="store.isAdmin" v-model="mine" @change="reload">只看我的</el-checkbox>
         <el-button style="margin-left:12px" @click="load" :loading="loading">刷新</el-button>
       </div>
     </div>
@@ -37,6 +37,17 @@
         </template>
       </el-table-column>
     </el-table>
+    <el-pagination
+      v-model:current-page="page"
+      v-model:page-size="pageSize"
+      :total="total"
+      :page-sizes="[10, 20, 50, 100]"
+      layout="total, sizes, prev, pager, next"
+      background
+      style="margin-top:16px;justify-content:flex-end"
+      @current-change="load"
+      @size-change="reload"
+    />
   </div>
 </template>
 
@@ -50,10 +61,23 @@ const store = useUserStore()
 const rows = ref<CardRecord[]>([])
 const loading = ref(false)
 const mine = ref(false)
+const page = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
 
 async function load() {
   loading.value = true
-  try { rows.value = await api.records(mine.value) } finally { loading.value = false }
+  try {
+    const res = await api.records({ page: page.value, page_size: pageSize.value, mine: mine.value })
+    rows.value = res.items
+    total.value = res.total
+  } finally {
+    loading.value = false
+  }
+}
+function reload() {
+  page.value = 1
+  load()
 }
 async function retry(row: CardRecord) {
   await api.retry(row.id)
