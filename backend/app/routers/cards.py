@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
@@ -12,7 +13,7 @@ from ..database import get_db
 from ..models import CardRecord, Category, User
 from ..schemas import Card, ConfirmIn, RecognizeOut, RecordOut, RecordPage
 from ..services import company_search, kdocs
-from ..services.vision import VisionError, image_to_data_url, recognize_card
+from ..services.vision import VisionError, image_to_data_url, make_thumbnail, recognize_card
 from .vision_models import get_default_model
 
 router = APIRouter(prefix="/api/cards", tags=["cards"])
@@ -23,6 +24,32 @@ MAX_SIZE = 15 * 1024 * 1024
 
 def public_url(rel: str) -> str:
     return f"{settings.PUBLIC_BASE_URL.rstrip('/')}/uploads/{rel}" if rel else ""
+
+
+def thumb_url(rel: str) -> str:
+    return f"{settings.PUBLIC_BASE_URL.rstrip('/')}/api/cards/thumb/{rel}" if rel else ""
+
+
+def thumb_path(rel: str) -> Path:
+    return settings.UPLOAD_DIR / "thumbs" / f"{rel}.jpg"
+
+
+def ensure_thumbnail(rel: str) -> Path | None:
+    if not rel or ".." in rel or rel.startswith(("/", "thumbs/")):
+        return None
+    src = settings.UPLOAD_DIR / rel
+    if not src.is_file():
+        return None
+    dst = thumb_path(rel)
+    if dst.is_file():
+        return dst
+    try:
+        data = make_thumbnail(src.read_bytes(), max_side=320, quality=75)
+    except OSError:
+        return None
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_bytes(data)
+    return dst
 
 
 def image_data(rel: str) -> str:
@@ -52,6 +79,7 @@ async def _save_upload(file: UploadFile | None) -> tuple[str, bytes]:
     target = settings.UPLOAD_DIR / rel
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
+    ensure_thumbnail(rel)
     return rel, data
 
 
@@ -112,6 +140,7 @@ def to_record_out(r: CardRecord) -> RecordOut:
         category_key=r.category_key,
         front_image_url=public_url(r.front_image),
         back_image_url=public_url(r.back_image),
+        front_thumb_url=thumb_url(r.front_image),
         card=card,
         kdocs_row=r.kdocs_row,
         duplicate=r.duplicate,
@@ -196,6 +225,14 @@ async def retry(record_id: int, user: User = Depends(get_current_user), db: Sess
     if r.status == "failed":
         raise HTTPException(502, r.error)
     return to_record_out(r)
+
+
+@router.get("/thumb/{rel:path}", include_in_schema=False)
+def thumb(rel: str):
+    path = ensure_thumbnail(rel)
+    if not path:
+        raise HTTPException(404, "图片不存在")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @router.get("/records", response_model=RecordPage)

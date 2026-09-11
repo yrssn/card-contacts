@@ -191,6 +191,7 @@ class RecordOut(BaseModel):
     category_key: str
     front_image_url: str
     back_image_url: str
+    front_thumb_url: str = ""
     card: Card
     kdocs_row: int
     duplicate: bool

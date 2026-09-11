@@ -10,7 +10,7 @@
     <el-table :data="rows" v-loading="loading" stripe>
       <el-table-column label="照片" width="130">
         <template #default="{ row }">
-          <el-image v-if="row.front_image_url" :src="row.front_image_url" :preview-src-list="[row.front_image_url, row.back_image_url].filter(Boolean)" fit="cover" style="width:100px;height:60px;border-radius:4px" preview-teleported />
+          <el-image v-if="row.front_image_url" :src="row.front_thumb_url || row.front_image_url" lazy :preview-src-list="[row.front_image_url, row.back_image_url].filter(Boolean)" fit="cover" style="width:100px;height:60px;border-radius:4px" preview-teleported />
         </template>
       </el-table-column>
       <el-table-column label="姓名" prop="card.name" width="120" />

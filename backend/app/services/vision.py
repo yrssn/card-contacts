@@ -41,6 +41,14 @@ def image_to_data_url(data: bytes, max_side: int = 1600, quality: int = 88) -> s
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
+def make_thumbnail(data: bytes, max_side: int = 320, quality: int = 75) -> bytes:
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    img.thumbnail((max_side, max_side))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=quality, optimize=True)
+    return buf.getvalue()
+
+
 def _test_image_data_url() -> str:
     """生成一张纯红色小图用于验证模型是否支持图片输入。"""
     img = Image.new("RGB", (64, 64), (220, 30, 30))

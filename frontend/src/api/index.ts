@@ -119,6 +119,7 @@ export interface CardRecord {
   category_key: string
   front_image_url: string
   back_image_url: string
+  front_thumb_url: string
   card: Card
   kdocs_row: number
   duplicate: boolean
