@@ -82,7 +82,7 @@ cd ../backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
 | `health` | - | 返回版本与工作表列表，用于测试连接 |
 | `list_sheets` | - | 列出所有工作表名 |
 | `ensure_sheet` | `sheetName` | 工作表不存在则新建并写表头（新建分类时调用） |
-| `add` | `sheetName, moduleLabel, card, importer, frontImageUrl, backImageUrl` | 写入一行；仅按「姓名+公司名」查重（同公司不同人、同名不同公司均另存一行），重复则只补照片和导入人；照片用 `Shapes.AddPicture(url)` 嵌入 N/O 列，导入人写 P 列 |
+| `add` | `sheetName, moduleLabel, card, importer, frontImageUrl, backImageUrl` | 写入一行；仅按「姓名+公司名+职位」查重（同公司不同人、同名不同公司、职位不同均另存一行），重复则只补照片和导入人；照片用 `Shapes.AddPicture(url)` 嵌入 N/O 列，导入人写 P 列 |
 
 ## 三、视觉模型配置
 

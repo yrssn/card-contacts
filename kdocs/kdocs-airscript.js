@@ -84,16 +84,17 @@ function compactRows(sheet) {
 }
 
 function findDuplicate(sheet, card) {
-  // 只有「姓名 + 公司名」都相同才算同一张名片；同公司不同人、同名不同公司都另存一行。
+  // 只有「姓名 + 公司名 + 职位」都相同才算同一张名片；同公司不同人、同名不同公司、同人换职位都另存一行。
   const wantedName = normalized(card.name);
   const wantedCompany = normalized(card.company);
+  const wantedTitle = normalized(card.department);
   if (!wantedName || !wantedCompany) return 0;
   const end = lastDataRow(sheet);
   if (end < 2) return 0;
   const rows = sheet.Range(`A2:${LAST_COL}${end}`).Value2 || [];
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index];
-    if (normalized(row[3]) === wantedName && normalized(row[9]) === wantedCompany) return index + 2;
+    if (normalized(row[3]) === wantedName && normalized(row[9]) === wantedCompany && normalized(row[6]) === wantedTitle) return index + 2;
   }
   return 0;
 }
